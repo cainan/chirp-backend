@@ -1,3 +1,6 @@
+pluginManagement {
+    includeBuild("build-logic")
+}
 rootProject.name = "chirp"
 
 include("app")
