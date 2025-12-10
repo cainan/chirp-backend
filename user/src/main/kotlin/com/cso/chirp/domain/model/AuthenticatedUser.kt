@@ -1,4 +1,4 @@
-package com.cso.user.domain.model
+package com.cso.chirp.domain.model
 
 data class AuthenticatedUser(
     val user: User,
