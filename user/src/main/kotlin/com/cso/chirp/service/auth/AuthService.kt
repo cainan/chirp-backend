@@ -1,17 +1,28 @@
 package com.cso.chirp.service.auth
 
+import com.cso.chirp.domain.exception.InvalidCredentialException
 import com.cso.chirp.domain.exception.UserAlreadyExistsException
+import com.cso.chirp.domain.exception.UserNotFoundException
+import com.cso.chirp.domain.model.AuthenticatedUser
 import com.cso.chirp.domain.model.User
+import com.cso.chirp.domain.model.UserId
+import com.cso.chirp.infra.database.entities.RefreshTokenEntity
 import com.cso.chirp.infra.database.entities.UserEntity
 import com.cso.chirp.infra.database.mappers.toUser
+import com.cso.chirp.infra.database.repositories.RefreshTokenRepository
 import com.cso.chirp.infra.database.repositories.UserRepository
 import com.cso.chirp.infra.security.PasswordEncoder
 import org.springframework.stereotype.Service
+import java.security.MessageDigest
+import java.time.Instant
+import java.util.*
 
 @Service
 class AuthService(
     private val userRepository: UserRepository,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val jwtService: JwtService,
+    private val refreshTokenRepository: RefreshTokenRepository
 ) {
 
     fun register(email: String, username: String, password: String): User {
@@ -34,5 +45,49 @@ class AuthService(
         ).toUser()
 
         return savedUser
+    }
+
+    fun login(email: String, password: String): AuthenticatedUser {
+
+        val user = userRepository.findByEmail(email.trim()) ?: throw InvalidCredentialException()
+
+        if (!passwordEncoder.matches(password, user.hashedPassword)) {
+            throw InvalidCredentialException()
+        }
+
+        // TODO: Check for verified email
+
+        return user.id?.let { userId ->
+            val accessToken = jwtService.generateAccessToken(userId)
+            val refreshToken = jwtService.generateRefreshToken(userId)
+
+            storeRefreshToken(userId, refreshToken)
+
+            AuthenticatedUser(
+                user = user.toUser(),
+                accessToken = accessToken,
+                refreshToken = refreshToken
+            )
+        } ?: throw UserNotFoundException()
+    }
+
+    fun storeRefreshToken(userId: UserId, refreshToken: String) {
+        val hashed = hashToken(refreshToken)
+        val expiryMs = jwtService.refreshTokenValidityMs
+        val expiresAt = Instant.now().plusMillis(expiryMs)
+
+        refreshTokenRepository.save(
+            RefreshTokenEntity(
+                userId = userId,
+                expiresAt = expiresAt,
+                hashedToken = hashed
+            )
+        )
+    }
+
+    private fun hashToken(token: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(token.encodeToByteArray())
+        return Base64.getEncoder().encodeToString(hashBytes)
     }
 }
