@@ -1,9 +1,6 @@
 package com.cso.chirp.service.auth
 
-import com.cso.chirp.domain.exception.InvalidCredentialException
-import com.cso.chirp.domain.exception.InvalidTokenException
-import com.cso.chirp.domain.exception.UserAlreadyExistsException
-import com.cso.chirp.domain.exception.UserNotFoundException
+import com.cso.chirp.domain.exception.*
 import com.cso.chirp.domain.model.AuthenticatedUser
 import com.cso.chirp.domain.model.User
 import com.cso.chirp.domain.model.UserId
@@ -25,13 +22,15 @@ class AuthService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
-    private val refreshTokenRepository: RefreshTokenRepository
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val emailVerificationService: EmailVerificationService
 ) {
 
+    @Transactional
     fun register(email: String, username: String, password: String): User {
-
+        val trimmedEmail = email.trim()
         val user = userRepository.findByEmailOrUsername(
-            email = email.trim(),
+            email = trimmedEmail,
             username = username.trim()
         )
 
@@ -39,13 +38,15 @@ class AuthService(
             throw UserAlreadyExistsException()
         }
 
-        val savedUser = userRepository.save(
+        val savedUser = userRepository.saveAndFlush(
             UserEntity(
-                email = email.trim(),
+                email = trimmedEmail,
                 username = username.trim(),
                 hashedPassword = passwordEncoder.encode(password)!!
             )
         ).toUser()
+
+        emailVerificationService.createVerificationToken(trimmedEmail)
 
         return savedUser
     }
@@ -58,7 +59,9 @@ class AuthService(
             throw InvalidCredentialException()
         }
 
-        // TODO: Check for verified email
+        if (!user.hasVerifiedEmail) {
+            throw EmailNotVerifiedException()
+        }
 
         return user.id?.let { userId ->
             val accessToken = jwtService.generateAccessToken(userId)
