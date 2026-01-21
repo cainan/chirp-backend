@@ -3,6 +3,7 @@ package com.cso.chirp.api.controllers
 import com.cso.chirp.api.dto.*
 import com.cso.chirp.api.mappers.toAuthenticatedUserDto
 import com.cso.chirp.api.mappers.toUserDto
+import com.cso.chirp.infra.rate_limiting.EmailRateLimiter
 import com.cso.chirp.service.auth.AuthService
 import com.cso.chirp.service.auth.EmailVerificationService
 import com.cso.chirp.service.auth.PasswordResetService
@@ -14,7 +15,8 @@ import org.springframework.web.bind.annotation.*
 class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
-    private val passwordResetService: PasswordResetService
+    private val passwordResetService: PasswordResetService,
+    private val emailRateLimiter: EmailRateLimiter
 ) {
 
     @PostMapping("/register")
@@ -54,6 +56,17 @@ class AuthController(
         authService.logout(body.refreshToken)
     }
 
+    @PostMapping("/resend-verification")
+    fun resendVerification(
+        @Valid @RequestBody body: EmailRequest
+    ) {
+        emailRateLimiter.withRateLimit(
+            email = body.email
+        ) {
+            emailVerificationService.resendVerificationEmail(body.email)
+        }
+    }
+
     @GetMapping("/verify")
     fun verifyEmail(
         @RequestParam token: String
@@ -63,7 +76,7 @@ class AuthController(
 
     @PostMapping("/forgot-password")
     fun forgotPassword(
-        @Valid @RequestBody body: ForgotPasswordRequest
+        @Valid @RequestBody body: EmailRequest
     ) {
         passwordResetService.requestPasswordReset(body.email)
     }
