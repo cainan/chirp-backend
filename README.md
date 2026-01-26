@@ -5,3 +5,8 @@ SpringBoot
 Supabase
 Gradle Modules
 Bcrypt to encode password
+
+External Tools
+- Supabase
+- Redis
+- RabbitMQ (CloudAMQP)
