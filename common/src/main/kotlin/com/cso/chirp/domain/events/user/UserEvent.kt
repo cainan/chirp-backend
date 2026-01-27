@@ -1,7 +1,7 @@
-package com.cso.com.cso.chirp.domain.events.user
+package com.cso.chirp.domain.events.user
 
-import com.cso.com.cso.chirp.domain.events.ChirpEvent
-import com.cso.com.cso.chirp.domain.type.UserId
+import com.cso.chirp.domain.events.ChirpEvent
+import com.cso.chirp.domain.type.UserId
 import java.time.Instant
 import java.util.*
 

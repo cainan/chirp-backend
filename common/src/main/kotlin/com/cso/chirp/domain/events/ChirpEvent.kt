@@ -1,4 +1,4 @@
-package com.cso.com.cso.chirp.domain.events
+package com.cso.chirp.domain.events
 
 import java.time.Instant
 

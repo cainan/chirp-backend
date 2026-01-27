@@ -1,7 +1,7 @@
-package com.cso.com.cso.chirp.infra.message_queue
+package com.cso.chirp.infra.message_queue
 
-import com.cso.com.cso.chirp.domain.events.ChirpEvent
-import com.cso.com.cso.chirp.domain.events.user.UserEventConstants
+import com.cso.chirp.domain.events.ChirpEvent
+import com.cso.chirp.domain.events.user.UserEventConstants
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.TopicExchange
 import org.springframework.amqp.rabbit.connection.ConnectionFactory

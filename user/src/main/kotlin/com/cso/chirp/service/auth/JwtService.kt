@@ -1,7 +1,7 @@
 package com.cso.chirp.service.auth
 
 import com.cso.chirp.domain.exception.InvalidTokenException
-import com.cso.com.cso.chirp.domain.type.UserId
+import com.cso.chirp.domain.type.UserId
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys

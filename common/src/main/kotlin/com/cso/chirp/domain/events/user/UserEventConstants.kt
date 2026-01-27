@@ -1,4 +1,4 @@
-package com.cso.com.cso.chirp.domain.events.user
+package com.cso.chirp.domain.events.user
 
 object UserEventConstants {
 

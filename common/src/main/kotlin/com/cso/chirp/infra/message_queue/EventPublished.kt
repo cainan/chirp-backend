@@ -1,6 +1,6 @@
-package com.cso.com.cso.chirp.infra.message_queue
+package com.cso.chirp.infra.message_queue
 
-import com.cso.com.cso.chirp.domain.events.ChirpEvent
+import com.cso.chirp.domain.events.ChirpEvent
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Component
@@ -12,7 +12,7 @@ class EventPublisher(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun <T: ChirpEvent> publish(event: T) {
+    fun <T : ChirpEvent> publish(event: T) {
         try {
             rabbitTemplate.convertAndSend(
                 event.exchange,
@@ -20,7 +20,7 @@ class EventPublisher(
                 event
             )
             logger.info("Successfully published event: ${event.eventKey}")
-        } catch(e: Exception) {
+        } catch (e: Exception) {
             logger.error("Failed to publish ${event.eventKey} event", e)
         }
     }
