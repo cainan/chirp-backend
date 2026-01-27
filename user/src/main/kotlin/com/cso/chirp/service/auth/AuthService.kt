@@ -1,14 +1,16 @@
 package com.cso.chirp.service.auth
 
+import com.cso.chirp.domain.events.user.UserEvent
 import com.cso.chirp.domain.exception.*
 import com.cso.chirp.domain.model.AuthenticatedUser
 import com.cso.chirp.domain.model.User
-import com.cso.com.cso.chirp.domain.type.UserId
+import com.cso.chirp.domain.type.UserId
 import com.cso.chirp.infra.database.entities.RefreshTokenEntity
 import com.cso.chirp.infra.database.entities.UserEntity
 import com.cso.chirp.infra.database.mappers.toUser
 import com.cso.chirp.infra.database.repositories.RefreshTokenRepository
 import com.cso.chirp.infra.database.repositories.UserRepository
+import com.cso.chirp.infra.message_queue.EventPublisher
 import com.cso.chirp.infra.security.PasswordEncoder
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -23,7 +25,8 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val emailVerificationService: EmailVerificationService
+    private val emailVerificationService: EmailVerificationService,
+    private val eventPublisher: EventPublisher,
 ) {
 
     @Transactional
@@ -46,7 +49,16 @@ class AuthService(
             )
         ).toUser()
 
-        emailVerificationService.createVerificationToken(trimmedEmail)
+        val verificationToken = emailVerificationService.createVerificationToken(trimmedEmail)
+
+        eventPublisher.publish(
+            event = UserEvent.Created(
+                userId = savedUser.id,
+                email = savedUser.email,
+                username = savedUser.username,
+                verificationToken = verificationToken.token,
+            )
+        )
 
         return savedUser
     }
