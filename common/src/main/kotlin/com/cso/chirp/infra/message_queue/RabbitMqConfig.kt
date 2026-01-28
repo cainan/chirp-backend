@@ -2,6 +2,8 @@ package com.cso.chirp.infra.message_queue
 
 import com.cso.chirp.domain.events.ChirpEvent
 import com.cso.chirp.domain.events.user.UserEventConstants
+import org.springframework.amqp.core.Binding
+import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.TopicExchange
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
@@ -16,6 +18,7 @@ import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import tools.jackson.module.kotlin.kotlinModule
 
 @Configuration
+//@EnableTransactionManagement
 class RabbitMqConfig {
 
     @Bean
@@ -37,6 +40,19 @@ class RabbitMqConfig {
         }
     }
 
+    // Used to rollback (not publishing) the event if some errors happen
+    // after the call and have "transactional" enabled
+//    @Bean
+//    fun rabbitListenerContainerFactory(
+//        connectionFactory: ConnectionFactory,
+//        transactionFactory: PlatformTransactionManager
+//    ): SimpleRabbitListenerContainerFactory {
+//        return SimpleRabbitListenerContainerFactory().apply {
+//            setConnectionFactory(connectionFactory)
+//            setTransactionManager(transactionFactory)
+//            setChannelTransacted(true)
+//        }
+//    }
 
     @Bean
     fun rabbitTemplate(
@@ -60,4 +76,15 @@ class RabbitMqConfig {
         MessageQueues.NOTIFICATION_USER_EVENTS,
         true
     )
+
+    @Bean
+    fun notificationUserEventsBinding(
+        notificationUserEventsQueue: Queue,
+        userExchange: TopicExchange
+    ): Binding {
+        return BindingBuilder
+            .bind(notificationUserEventsQueue)
+            .to(userExchange)
+            .with(("user.*"))
+    }
 }
