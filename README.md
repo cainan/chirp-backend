@@ -10,3 +10,4 @@ External Tools
 - Redis
 - RabbitMQ (CloudAMQP)
 - Thymeleaf
+- Email Service (Mailgun/Yopmail)

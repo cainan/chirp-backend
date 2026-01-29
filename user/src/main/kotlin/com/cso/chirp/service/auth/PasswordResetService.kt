@@ -1,5 +1,6 @@
 package com.cso.chirp.service.auth
 
+import com.cso.chirp.domain.events.user.UserEvent
 import com.cso.chirp.domain.exception.InvalidCredentialException
 import com.cso.chirp.domain.exception.InvalidTokenException
 import com.cso.chirp.domain.exception.SamePasswordException
@@ -9,6 +10,7 @@ import com.cso.chirp.infra.database.entities.PasswordResetTokenEntity
 import com.cso.chirp.infra.database.repositories.PasswordResetTokenRepository
 import com.cso.chirp.infra.database.repositories.RefreshTokenRepository
 import com.cso.chirp.infra.database.repositories.UserRepository
+import com.cso.chirp.infra.message_queue.EventPublisher
 import com.cso.chirp.infra.security.PasswordEncoder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
@@ -25,7 +27,8 @@ class PasswordResetService(
     private val passwordEncoder: PasswordEncoder,
     @param:Value("\${chirp.email.reset-password.expiry-minutes}")
     private val expiryMinutes: Long,
-    private val refreshTokenRepository: RefreshTokenRepository
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val eventPublisher: EventPublisher
 ) {
 
     @Transactional
@@ -34,13 +37,21 @@ class PasswordResetService(
 
         passwordResetTokenRepository.invalidateActiveTokensForUser(user)
 
-        val token = PasswordResetTokenEntity(
+        val passwordResetToken = PasswordResetTokenEntity(
             user = user,
             expiresAt = Instant.now().plus(expiryMinutes, ChronoUnit.MINUTES),
         )
-        passwordResetTokenRepository.save(token)
+        passwordResetTokenRepository.save(passwordResetToken)
 
-        // TODO: Inform notification service about password reset trigger to send email
+        eventPublisher.publish(
+            event = UserEvent.RequestResetPassword(
+                userId = user.id!!,
+                email = user.email,
+                username = user.username,
+                passwordResetToken = passwordResetToken.token,
+                expiresInMinutes = expiryMinutes
+            )
+        )
     }
 
     @Transactional
@@ -48,17 +59,17 @@ class PasswordResetService(
         val resetToken = passwordResetTokenRepository.findByToken(token)
             ?: throw InvalidTokenException("Invalid password reset token")
 
-        if(resetToken.isUsed) {
+        if (resetToken.isUsed) {
             throw InvalidTokenException("Email verification token is already used.")
         }
 
-        if(resetToken.isExpired) {
+        if (resetToken.isExpired) {
             throw InvalidTokenException("Email verification token has already expired.")
         }
 
         val user = resetToken.user
 
-        if(passwordEncoder.matches(newPassword, user.hashedPassword)) {
+        if (passwordEncoder.matches(newPassword, user.hashedPassword)) {
             throw SamePasswordException()
         }
 
@@ -87,11 +98,11 @@ class PasswordResetService(
         val user = userRepository.findByIdOrNull(userId)
             ?: throw UserNotFoundException()
 
-        if(!passwordEncoder.matches(oldPassword, user.hashedPassword)) {
+        if (!passwordEncoder.matches(oldPassword, user.hashedPassword)) {
             throw InvalidCredentialException()
         }
 
-        if(oldPassword == newPassword) {
+        if (oldPassword == newPassword) {
             throw SamePasswordException()
         }
 
