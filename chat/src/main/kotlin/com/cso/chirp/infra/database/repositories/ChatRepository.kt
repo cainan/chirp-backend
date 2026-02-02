@@ -37,6 +37,6 @@ interface ChatRepository : JpaRepository<ChatEntity, ChatId> {
         )
     """
     )
-    fun findAllByUserId(userId: UserId): List<ChatEntity>
+    fun findAllByUserId(userId: UserId): Set<ChatEntity>
 
 }

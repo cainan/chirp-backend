@@ -51,6 +51,6 @@ class ChatEntity(
 //    var lastActivity: Instant,
 
     @CreationTimestamp
-    var createdAt: Instant = Instant.now(),
+    var createdAt: Instant = Instant.now()
 
-    )
+)
