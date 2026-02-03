@@ -4,7 +4,7 @@ import com.cso.chirp.api.config.IpRateLimit
 import com.cso.chirp.api.dto.*
 import com.cso.chirp.api.mappers.toAuthenticatedUserDto
 import com.cso.chirp.api.mappers.toUserDto
-import com.cso.chirp.api.util.requestUserId
+import com.cso.chirp.api.utils.requestUserId
 import com.cso.chirp.infra.rate_limiting.EmailRateLimiter
 import com.cso.chirp.service.auth.AuthService
 import com.cso.chirp.service.auth.EmailVerificationService

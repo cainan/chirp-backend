@@ -1,4 +1,4 @@
-package com.cso.chirp.api.util
+package com.cso.chirp.api.utils
 
 import com.cso.chirp.domain.exception.UnauthorizedException
 import com.cso.chirp.domain.type.UserId
