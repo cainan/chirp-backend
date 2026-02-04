@@ -61,6 +61,14 @@ class EmailVerificationService(
         userRepository.save(
             verificationTokenEntity.user.apply { this.hasVerifiedEmail = true }
         )
+
+        eventPublisher.publish(
+            UserEvent.Verified(
+                userId = verificationTokenEntity.user.id!!,
+                email = verificationTokenEntity.user.email,
+                username = verificationTokenEntity.user.username,
+            )
+        )
     }
 
     @Transactional
