@@ -1,5 +1,7 @@
 package com.cso.chirp.service
 
+import com.cso.chirp.domain.event.MessageDeletedEvent
+import com.cso.chirp.domain.events.chat.ChatEvent
 import com.cso.chirp.domain.exception.ChatNotFoundException
 import com.cso.chirp.domain.exception.ChatParticipantNotFoundException
 import com.cso.chirp.domain.exception.ForbiddenException
@@ -13,6 +15,8 @@ import com.cso.chirp.infra.database.mappers.toChatMessage
 import com.cso.chirp.infra.database.repositories.ChatMessageRepository
 import com.cso.chirp.infra.database.repositories.ChatParticipantRepository
 import com.cso.chirp.infra.database.repositories.ChatRepository
+import com.cso.chirp.infra.message_queue.EventPublisher
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,6 +26,8 @@ class ChatMessageService(
     private val chatMessageRepository: ChatMessageRepository,
     private val chatRepository: ChatRepository,
     private val chatParticipantRepository: ChatParticipantRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
+    private val eventPublisher: EventPublisher,
 ) {
 
     @Transactional
@@ -37,13 +43,23 @@ class ChatMessageService(
         val sender = chatParticipantRepository.findByIdOrNull(senderId)
             ?: throw ChatParticipantNotFoundException(senderId)
 
-        val savedMessage = chatMessageRepository.save(
+        val savedMessage = chatMessageRepository.saveAndFlush(
             ChatMessageEntity(
                 id = messageId,
                 content = content.trim(),
                 chatId = chatId,
                 chat = chat,
                 sender = sender,
+            )
+        )
+
+        eventPublisher.publish(
+            ChatEvent.NewMessage(
+                senderId = sender.userId,
+                senderUsername = sender.username,
+                recipientIds = chat.participants.map { it.userId }.toSet(),
+                chatId = chatId,
+                message = savedMessage.content,
             )
         )
 
@@ -62,5 +78,12 @@ class ChatMessageService(
         }
 
         chatMessageRepository.delete(message)
+
+        applicationEventPublisher.publishEvent(
+            MessageDeletedEvent(
+                chatId = message.chatId,
+                messageId = messageId
+            )
+        )
     }
 }

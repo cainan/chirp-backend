@@ -2,6 +2,8 @@ package com.cso.chirp.service
 
 import com.cso.chirp.api.dto.ChatMessageDto
 import com.cso.chirp.api.mappers.toChatMessageDto
+import com.cso.chirp.domain.event.ChatParticipantLeftEvent
+import com.cso.chirp.domain.event.ChatParticipantsJoinedEvent
 import com.cso.chirp.domain.exception.ChatNotFoundException
 import com.cso.chirp.domain.exception.ChatParticipantNotFoundException
 import com.cso.chirp.domain.exception.ForbiddenException
@@ -16,6 +18,7 @@ import com.cso.chirp.infra.database.mappers.toChatMessage
 import com.cso.chirp.infra.database.repositories.ChatMessageRepository
 import com.cso.chirp.infra.database.repositories.ChatParticipantRepository
 import com.cso.chirp.infra.database.repositories.ChatRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -26,7 +29,8 @@ import java.time.Instant
 class ChatService(
     private val chatRepository: ChatRepository,
     private val chatParticipantRepository: ChatParticipantRepository,
-    private val chatMessageRepository: ChatMessageRepository
+    private val chatMessageRepository: ChatMessageRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher
 ) {
 
     @Transactional
@@ -83,6 +87,13 @@ class ChatService(
             }
         ).toChat(lastMessage)
 
+        applicationEventPublisher.publishEvent(
+            ChatParticipantsJoinedEvent(
+                chatId = chatId,
+                userIds = otherUsers.map { it.userId }.toSet()
+            )
+        )
+
         return updatedChat
     }
 
@@ -106,6 +117,13 @@ class ChatService(
             chat.apply {
                 this.participants = (chat.participants - participant).toMutableSet()
             }
+        )
+
+        applicationEventPublisher.publishEvent(
+            ChatParticipantLeftEvent(
+                chatId = chatId,
+                userId = userId
+            )
         )
     }
 
