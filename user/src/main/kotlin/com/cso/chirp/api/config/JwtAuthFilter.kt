@@ -1,6 +1,6 @@
 package com.cso.chirp.api.config
 
-import com.cso.chirp.service.auth.JwtService
+import com.cso.chirp.service.JwtService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

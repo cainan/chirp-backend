@@ -1,4 +1,4 @@
-package com.cso.chirp.service.auth
+package com.cso.chirp.service
 
 import com.cso.chirp.domain.exception.InvalidTokenException
 import com.cso.chirp.domain.type.UserId
@@ -21,7 +21,7 @@ class JwtService(
      */
 
 
-    private val secretKey = Keys.hmacShaKeyFor(Base64.decode(secretBase64))
+    private val secretKey = Keys.hmacShaKeyFor(Base64.Default.decode(secretBase64))
     private val accessTokenValidityMs = expirationMinutes * 60 * 1000L
     val refreshTokenValidityMs = 30 * 24 * 60 * 60 * 1000L // 30 days
 

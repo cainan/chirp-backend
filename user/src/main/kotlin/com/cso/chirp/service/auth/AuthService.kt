@@ -12,6 +12,7 @@ import com.cso.chirp.infra.database.repositories.RefreshTokenRepository
 import com.cso.chirp.infra.database.repositories.UserRepository
 import com.cso.chirp.infra.message_queue.EventPublisher
 import com.cso.chirp.infra.security.PasswordEncoder
+import com.cso.chirp.service.JwtService
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
