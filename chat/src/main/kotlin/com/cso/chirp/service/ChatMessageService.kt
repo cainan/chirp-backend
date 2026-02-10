@@ -71,6 +71,7 @@ class ChatMessageService(
         return savedMessage.toChatMessage()
     }
 
+    @Transactional
     fun deleteMessage(
         messageId: ChatMessageId,
         requestUserId: UserId
