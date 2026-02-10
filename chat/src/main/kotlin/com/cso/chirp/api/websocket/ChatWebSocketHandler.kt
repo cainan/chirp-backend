@@ -12,11 +12,10 @@ import com.cso.chirp.service.ChatService
 import com.cso.chirp.service.JwtService
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
-import org.springframework.web.socket.CloseStatus
-import org.springframework.web.socket.TextMessage
-import org.springframework.web.socket.WebSocketSession
+import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import tools.jackson.core.JacksonException
 import tools.jackson.databind.ObjectMapper
@@ -31,6 +30,11 @@ class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val jwtService: JwtService
 ) : TextWebSocketHandler() {
+
+    companion object {
+        private const val PING_INTERVAL_MS = 30_000L
+        private const val PONG_TIMEOUT_MS = 60_000L
+    }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -125,6 +129,35 @@ class ChatWebSocketHandler(
                 )
             )
         }
+    }
+
+    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        connectionLock.write {
+            sessions.remove(session.id)?.let { userSession ->
+                val userId = userSession.userId
+
+                userToSessions.compute(userId) { _, sessions ->
+                    sessions
+                        ?.apply { remove(session.id) }
+                        ?.takeIf { it.isNotEmpty() }
+                }
+
+                userChatIds[userId]?.forEach { chatId ->
+                    chatToSessions.compute(chatId) { _, sessions ->
+                        sessions
+                            ?.apply { remove(session.id) }
+                            ?.takeIf { it.isNotEmpty() }
+                    }
+                }
+
+                logger.info("Websocket session closed for user $userId")
+            }
+        }
+    }
+
+    override fun handleTransportError(session: WebSocketSession, exception: Throwable) {
+        logger.error("Transport error for session ${session.id}", exception)
+        session.close(CloseStatus.SERVER_ERROR.withReason("Transport error"))
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -296,9 +329,60 @@ class ChatWebSocketHandler(
         }
     }
 
+    override fun handlePongMessage(session: WebSocketSession, message: PongMessage) {
+        connectionLock.write {
+            sessions.compute(session.id) { _, userSession ->
+                userSession?.copy(
+                    lastPongTimestamp = System.currentTimeMillis()
+                )
+            }
+        }
+        logger.debug("Received pong from ${session.id}")
+    }
+
+    @Scheduled(fixedDelay = PING_INTERVAL_MS)
+    fun pingClients() {
+        val currentTime = System.currentTimeMillis()
+        val sessionsToClose = mutableListOf<String>()
+
+        val sessionsSnapshot = connectionLock.read { sessions.toMap() }
+
+        sessionsSnapshot.forEach { (sessionId, userSession) ->
+            try {
+                if (userSession.session.isOpen) {
+                    val lastPong = userSession.lastPongTimestamp
+                    if (currentTime - lastPong > PONG_TIMEOUT_MS) {
+                        logger.warn("Session $sessionId has timed out, closing connection.")
+                        sessionsToClose.add(sessionId)
+                        return@forEach
+                    }
+
+                    userSession.session.sendMessage(PingMessage())
+                    logger.debug("Sent ping to {}", userSession.userId)
+                }
+            } catch (e: Exception) {
+                logger.error("Could not ping session $sessionId", e)
+                sessionsToClose.add(sessionId)
+            }
+        }
+
+        sessionsToClose.forEach { sessionId ->
+            connectionLock.read {
+                sessions[sessionId]?.session?.let { session ->
+                    try {
+                        session.close(CloseStatus.GOING_AWAY.withReason("Ping timeout"))
+                    } catch (e: Exception) {
+                        logger.error("Couldn't close sessions for session ${session.id}")
+                    }
+                }
+            }
+        }
+    }
+
     private data class UserSession(
         val userId: UserId,
-        val session: WebSocketSession
+        val session: WebSocketSession,
+        val lastPongTimestamp: Long = System.currentTimeMillis()
     )
 
 }
