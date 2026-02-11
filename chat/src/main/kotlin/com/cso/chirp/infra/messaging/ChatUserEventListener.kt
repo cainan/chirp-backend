@@ -1,4 +1,4 @@
-package com.cso.chirp.infra.database.messaging
+package com.cso.chirp.infra.messaging
 
 import com.cso.chirp.domain.events.user.UserEvent
 import com.cso.chirp.domain.model.ChatParticipant
