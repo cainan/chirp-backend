@@ -8,3 +8,6 @@ data class SendMessageDto(
     val content: String,
     val messageId: ChatMessageId? = null
 )
+/*
+{\"chatId\": \"ac5ff6a9-7c85-442a-9da0-b4b60ac6c077\",\"content\": \"E ai manooooo\",\"mesageId\": \"\"}
+ */
