@@ -5,6 +5,7 @@ import com.cso.chirp.api.mappers.toChatMessageDto
 import com.cso.chirp.domain.event.ChatParticipantLeftEvent
 import com.cso.chirp.domain.event.ChatParticipantsJoinedEvent
 import com.cso.chirp.domain.event.MessageDeletedEvent
+import com.cso.chirp.domain.event.ProfilePictureUpdatedEvent
 import com.cso.chirp.domain.type.ChatId
 import com.cso.chirp.domain.type.UserId
 import com.cso.chirp.service.ChatMessageService
@@ -238,6 +239,46 @@ class ChatWebSocketHandler(
                 )
             )
         )
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onProfilePictureUpdated(event: ProfilePictureUpdatedEvent) {
+        val userChats = connectionLock.read {
+            userChatIds[event.userId]?.toList() ?: emptyList()
+        }
+
+        val dto = ProfilePictureUpdateDto(
+            userId = event.userId,
+            newUrl = event.newUrl,
+        )
+
+        val sessionIds = mutableSetOf<String>()
+        userChats.forEach { chatId ->
+            connectionLock.read {
+                chatToSessions[chatId]?.let { sessions ->
+                    sessionIds.addAll(sessions)
+                }
+            }
+        }
+
+        val webSocketMessage = OutgoingWebSocketMessage(
+            type = OutgoingWebSocketMessageType.PROFILE_PICTURE_UPDATED,
+            payload = objectMapper.writeValueAsString(dto)
+        )
+        val messageJson = objectMapper.writeValueAsString(webSocketMessage)
+
+        sessionIds.forEach { sessionId ->
+            val userSession = connectionLock.read {
+                sessions[sessionId]
+            } ?: return@forEach
+            try {
+                if (userSession.session.isOpen) {
+                    userSession.session.sendMessage(TextMessage(messageJson))
+                }
+            } catch (e: Exception) {
+                logger.error("Could not send profile picture update to session $sessionId", e)
+            }
+        }
     }
 
     private fun sendError(
