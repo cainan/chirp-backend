@@ -1,7 +1,6 @@
-package com.cso.chirp.infra
+package com.cso.chirp.infra.message_queue
 
 import com.cso.chirp.domain.events.user.UserEvent
-import com.cso.chirp.infra.message_queue.MessageQueues
 import com.cso.chirp.service.EmailService
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.annotation.RabbitListener
