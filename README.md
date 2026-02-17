@@ -11,3 +11,7 @@ External Tools
 - RabbitMQ (CloudAMQP)
 - Thymeleaf
 - Email Service (Mailgun/Yopmail)
+
+
+To Run:
+./gradlew :app:bootJar
