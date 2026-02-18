@@ -2,10 +2,7 @@ package com.cso.chirp.api.websocket
 
 import com.cso.chirp.api.dto.ws.*
 import com.cso.chirp.api.mappers.toChatMessageDto
-import com.cso.chirp.domain.event.ChatParticipantLeftEvent
-import com.cso.chirp.domain.event.ChatParticipantsJoinedEvent
-import com.cso.chirp.domain.event.MessageDeletedEvent
-import com.cso.chirp.domain.event.ProfilePictureUpdatedEvent
+import com.cso.chirp.domain.event.*
 import com.cso.chirp.domain.type.ChatId
 import com.cso.chirp.domain.type.UserId
 import com.cso.chirp.service.ChatMessageService
@@ -180,22 +177,31 @@ class ChatWebSocketHandler(
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    fun onJoinChat(event: ChatParticipantsJoinedEvent) {
+    fun onChatCreated(event: ChatCreatedEvent) {
+        updateChatForUsers(event.chatId, event.participants)
+    }
+
+    private fun updateChatForUsers(chatId: ChatId, userIds: List<UserId>) {
         connectionLock.write {
-            event.userIds.forEach { userId ->
+            userIds.forEach { userId ->
                 userChatIds.compute(userId) { _, chatIds ->
                     (chatIds ?: mutableSetOf()).apply {
-                        add(event.chatId)
+                        add(chatId)
                     }
                 }
 
                 userToSessions[userId]?.forEach { sessionId ->
-                    chatToSessions.compute(event.chatId) { _, sessions ->
+                    chatToSessions.compute(chatId) { _, sessions ->
                         (sessions ?: mutableSetOf()).apply { add(sessionId) }
                     }
                 }
             }
         }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onJoinChat(event: ChatParticipantsJoinedEvent) {
+        updateChatForUsers(event.chatId, event.userIds.toList())
 
         broadcastToChat(
             chatId = event.chatId,

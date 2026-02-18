@@ -2,6 +2,7 @@ package com.cso.chirp.service
 
 import com.cso.chirp.api.dto.ChatMessageDto
 import com.cso.chirp.api.mappers.toChatMessageDto
+import com.cso.chirp.domain.event.ChatCreatedEvent
 import com.cso.chirp.domain.event.ChatParticipantLeftEvent
 import com.cso.chirp.domain.event.ChatParticipantsJoinedEvent
 import com.cso.chirp.domain.exception.ChatNotFoundException
@@ -50,12 +51,19 @@ class ChatService(
         val creator = chatParticipantRepository.findByIdOrNull(creatorId)
             ?: throw InvalidChatSizeException()
 
-        return chatRepository.save(
+        return chatRepository.saveAndFlush(
             ChatEntity(
                 creator = creator,
                 participants = otherParticipants.toMutableSet().apply { add(creator) },
             )
-        ).toChat()
+        ).toChat().also { entity ->
+            applicationEventPublisher.publishEvent(
+                ChatCreatedEvent(
+                    chatId = entity.id,
+                    participants = entity.participants.map { it.userId }
+                )
+            )
+        }
     }
 
     @Transactional
