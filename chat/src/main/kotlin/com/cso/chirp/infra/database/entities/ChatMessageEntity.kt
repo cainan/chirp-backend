@@ -16,7 +16,6 @@ import java.time.Instant
 )
 class ChatMessageEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     var id: ChatMessageId? = null,
 
     @Column(nullable = false)
