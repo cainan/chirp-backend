@@ -6,5 +6,5 @@ data class UserDto(
     val id: UserId,
     val username: String,
     val email: String,
-    val hasEmailVerified: Boolean
+    val hasVerifiedEmail: Boolean
 )

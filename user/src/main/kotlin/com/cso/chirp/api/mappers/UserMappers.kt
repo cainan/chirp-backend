@@ -9,7 +9,7 @@ fun User.toUserDto(): UserDto = UserDto(
     id = id,
     username = username,
     email = email,
-    hasEmailVerified = hasEmailVerified
+    hasVerifiedEmail = hasEmailVerified
 )
 
 fun AuthenticatedUser.toAuthenticatedUserDto(): AuthenticatedUserDto = AuthenticatedUserDto(
@@ -22,7 +22,7 @@ fun UserDto.toUser(): User = User(
     id = id,
     username = username,
     email = email,
-    hasEmailVerified = hasEmailVerified
+    hasEmailVerified = hasVerifiedEmail
 )
 
 fun AuthenticatedUserDto.toAuthenticatedUser(): AuthenticatedUser = AuthenticatedUser(
